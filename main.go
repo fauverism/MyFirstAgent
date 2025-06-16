@@ -23,7 +23,7 @@ func main() {
 	agent := NewAgent(&client, getUserMessage)
 	err := agent.Run(context.TODO())
 	if err != nil {
-		fmt.Printf("Error: %v\n", err.Error())
+		fmt.Printf("Error: %s\n", err.Error())
 	}
 }
 
@@ -67,6 +67,7 @@ func (a *Agent) Run(ctx context.Context) error {
 			}
 		}
 	}
+
 	return nil
 }
 
