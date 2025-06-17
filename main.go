@@ -3,14 +3,82 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/anthropics/anthropic-sdk-go"
 )
 
+type ChatRequest struct {
+	Message string `json:"message"`
+}
+
+type ChatResponse struct {
+	Reply string `json:"reply"`
+}
+
 func main() {
 	client := anthropic.NewClient()
+
+	// Serve static files
+	fs := http.FileServer(http.Dir("static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
+
+	// Serve the main page
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/index.html")
+	})
+
+	// Your existing chat endpoint
+	chatHandler := func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			return
+		}
+
+		var req ChatRequest
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, "Invalid request body", http.StatusBadRequest)
+			return
+		}
+
+		// Create message for Anthropic API
+		conversation := []anthropic.MessageParam{
+			anthropic.NewUserMessage(anthropic.NewTextBlock(req.Message)),
+		}
+
+		// Call Anthropic API
+		message, err := client.Messages.New(r.Context(), anthropic.MessageNewParams{
+			Model:     anthropic.ModelClaude3_7SonnetLatest,
+			MaxTokens: int64(1024),
+			Messages:  conversation,
+		})
+		if err != nil {
+			http.Error(w, "Error calling Anthropic API", http.StatusInternalServerError)
+			return
+		}
+
+		// Extract text response
+		var reply string
+		for _, content := range message.Content {
+			if content.Type == "text" {
+				reply = content.Text
+				break
+			}
+		}
+
+		// Send response
+		response := ChatResponse{Reply: reply}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}
+	http.HandleFunc("/chat", chatHandler)
+
+	// Start the server
+	println("Server running on http://localhost:8080")
+	http.ListenAndServe(":8080", nil)
 
 	scanner := bufio.NewScanner(os.Stdin)
 	getUserMessage := func() (string, bool) {
