@@ -23,12 +23,12 @@ func main() {
 	client := anthropic.NewClient()
 
 	// Serve static files
-	fs := http.FileServer(http.Dir("static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fs))
+	fs := http.FileServer(http.Dir("/"))
+	http.Handle("/", http.StripPrefix("/", fs))
 
 	// Serve the main page
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/index.html")
+		http.ServeFile(w, r, "index.html")
 	})
 
 	// Your existing chat endpoint
