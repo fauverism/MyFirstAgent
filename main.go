@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 )
@@ -23,12 +26,12 @@ func main() {
 	client := anthropic.NewClient()
 
 	// Serve static files
-	fs := http.FileServer(http.Dir("/"))
-	http.Handle("/", http.StripPrefix("/", fs))
+	fs := http.FileServer(http.Dir("static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fs))
 
 	// Serve the main page
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "index.html")
+		http.ServeFile(w, r, "static/index.html")
 	})
 
 	// Your existing chat endpoint
@@ -76,10 +79,20 @@ func main() {
 	}
 	http.HandleFunc("/chat", chatHandler)
 
-	// Start the server
-	println("Server running on http://localhost:8080")
-	http.ListenAndServe(":8080", nil)
+	// Start the server in a goroutine
+	server := &http.Server{Addr: ":8080"}
+	go func() {
+		fmt.Println("Server running on http://localhost:8080")
+		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			fmt.Printf("HTTP server error: %s\n", err)
+		}
+	}()
 
+	// Handle graceful shutdown on Ctrl+C
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	// Start CLI agent
 	scanner := bufio.NewScanner(os.Stdin)
 	getUserMessage := func() (string, bool) {
 		if !scanner.Scan() {
@@ -89,10 +102,20 @@ func main() {
 	}
 
 	agent := NewAgent(&client, getUserMessage)
-	err := agent.Run(context.TODO())
-	if err != nil {
-		fmt.Printf("Error: %s\n", err.Error())
-	}
+	go func() {
+		err := agent.Run(context.TODO())
+		if err != nil {
+			fmt.Printf("Error: %s\n", err.Error())
+		}
+		// Stop server when CLI agent exits
+		stop <- os.Interrupt
+	}()
+
+	<-stop
+	fmt.Println("\nShutting down server...")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	server.Shutdown(ctx)
 }
 
 func NewAgent(client *anthropic.Client, getUserMessage func() (string, bool)) *Agent {
