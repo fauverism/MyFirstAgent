@@ -1,0 +1,16 @@
+#chatBox h1 {
+  font-size: 5rem;
+}
+#chatBox p,
+#chatBox li  {
+  font-size: 1.3rem;
+  margin: 0 0 1rem 0;
+}
+#chatBox ul {
+  margin-left: 20px;
+  padding-left: 1.5rem;
+}
+#chatBox li {
+  list-style-type: disc;
+  margin-bottom: 0.5rem;
+}

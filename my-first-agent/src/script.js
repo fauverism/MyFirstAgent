@@ -1,17 +1,18 @@
 // script.js
-console.log('Script loaded');
 document.addEventListener('DOMContentLoaded', () => {
+
     const chatBox = document.getElementById('chatBox');
     const messageInput = document.getElementById('messageInput');
     const sendButton = document.getElementById('sendButton');
 
     function addMessage(message, isUser) {
-        console.log('Adding message:', message, 'Is user:', isUser);
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
-        messageDiv.textContent = message;
-        chatBox.appendChild(messageDiv);
+        //console.log('Adding message:', message, 'Is user:', isUser);
+        //const messageDiv = document.createElement('div');
+        //messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+        //messageDiv.textContent = message;
+        // chatBox.appendChild(messageDiv);
         chatBox.scrollTop = chatBox.scrollHeight;
+
     }
 
     async function sendMessage() {
@@ -33,6 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json();
             addMessage(data.reply, false);
+            const outputOfResponse = document.getElementById('chatBox');
+            outputOfResponse.innerHTML = marked.parse(data.reply);
         } catch (error) {
             console.error('Error:', error);
             addMessage('Error: Could not get response', false);
@@ -41,9 +44,15 @@ document.addEventListener('DOMContentLoaded', () => {
         messageInput.value = '';
     }
 
+    // const markdownText = '# Hello, Markdown!\n\nThis is some **bold** text.';
+    // const htmlOutput = marked.parse(markdownText);
+
+    // You can then insert this HTML into your DOM
+    // document.getElementById('output-div').innerHTML = htmlOutput;
+
     sendButton.addEventListener('click', sendMessage);
     messageInput.addEventListener('keypress', (e) => {
-      console.log(e.key);
+      // console.log(e.key);
         if (e.key === 'Enter') {
             sendMessage();
         }
